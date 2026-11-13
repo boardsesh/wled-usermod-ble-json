@@ -1,7 +1,13 @@
 {
-  "name": "wled-usermod-example",
+  "name": "wled-usermod-ble-json",
+  "version": "0.1.0",
+  "description": "Bounded runtime WLED JSON over Bluetooth LE",
+  "license": "EUPL-1.2",
   "build": {
-    "libArchive": false
+    "libArchive": false,
+    "srcDir": "src"
   },
-  "dependencies": {}
+  "dependencies": {
+    "h2zero/NimBLE-Arduino": "2.5.2"
+  }
 }

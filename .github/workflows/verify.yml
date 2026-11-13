@@ -1,0 +1,41 @@
+name: Verify usermod candidates
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: wled/WLED
+          ref: 29b389df1c1aaec6ff53aea742d17063b985906c
+          path: upstream-wled
+      - run: c++ -std=c++17 -Wall -Wextra -Werror -Iupstream-wled/wled00/src/dependencies/json -Isrc tests/host.cpp -o /tmp/host && /tmp/host test-vectors.json
+  firmware:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [boardsesh_ble_audio, boardsesh_ble_no_audio]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: wled/WLED
+          ref: 29b389df1c1aaec6ff53aea742d17063b985906c
+          path: upstream-wled
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install platformio==6.1.18
+      - run: python tools/build.py --wled upstream-wled --environment ${{ matrix.environment }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unqualified-${{ matrix.environment }}
+          path: dist/

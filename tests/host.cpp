@@ -1,0 +1,65 @@
+#include <cassert>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include "ArduinoJson-v6.h"
+#include "frame.h"
+#include "lighting.h"
+using ble_json::Frame;
+
+bool allows(const char* json, uint32_t count = 1000) {
+  DynamicJsonDocument document(32768);
+  assert(!deserializeJson(document,json));
+  return ble_json_validation::lighting(document.as<JsonObjectConst>(),count);
+}
+int main(int argc,char** argv) {
+  const uint8_t json[] = {2,0,0,0,'{','}'};
+  for (size_t size=1;size<=6;++size) {
+    Frame frame;
+    for (size_t offset=0;offset<6;offset+=size) assert(frame.append(json+offset,std::min(size,6-offset),10));
+    assert(frame.complete()); assert(!frame.append(json,6,20));
+    frame.reset(); assert(!frame.complete());
+    assert(frame.append(json,3,100)); assert(!frame.append(json+3,3,5100));
+  }
+  ble_json::ReplyState reply;
+  reply.inFlight=true; reply.waitingIndication=true; reply.outgoingSize=100; reply.outgoingOffset=100;
+  reply.acknowledge(); // next request is legal before main loop gets another turn
+  assert(!reply.inFlight && !reply.waitingIndication && !reply.outgoingSize);
+  reply.inFlight=true; reply.waitingIndication=true; reply.outgoingSize=100; reply.outgoingOffset=20;
+  reply.acknowledge(); assert(reply.inFlight && reply.confirmed);
+  const char* validJson=" {\"state\":{\"on\":true}} ";
+  const char* trailingJson="{\"on\":true}garbage";
+  assert(ble_json::oneJsonObject(reinterpret_cast<const uint8_t*>(validJson),strlen(validJson)));
+  assert(!ble_json::oneJsonObject(reinterpret_cast<const uint8_t*>(trailingJson),strlen(trailingJson)));
+  assert(ble_json::validId("read:1")); assert(!ble_json::validId("bad id"));
+  const uint8_t invalidUtf8[]={0xc0,0x80}; assert(!ble_json::validUtf8(invalidUtf8,2));
+  Frame frame;
+  const uint8_t zero[] = {0,0,0,0}, large[] = {1,32,0,0}, overflow[] = {1,0,0,0,'{','}'};
+  assert(!frame.append(zero,4,1)); frame.reset(); assert(!frame.append(large,4,1)); frame.reset(); assert(!frame.append(overflow,6,1)); frame.reset();
+  assert(frame.append(json,2,0xfffffff0)); assert(frame.expired(0xfffffff0u+5000u));
+  assert(allows("{\"on\":true,\"bri\":64,\"seg\":[{\"id\":0,\"start\":0,\"stop\":1000,\"i\":[0,1000,\"00000000\",999,\"FF000000\"]}]}"));
+  assert(!allows("{\"on\":true,\"psave\":1}"));
+  assert(!allows("{\"on\":true,\"wifi\":{\"ap\":true}}"));
+  assert(!allows("{\"seg\":[{\"id\":0,\"i\":[1000,\"ffffff\"]}]}"));
+  assert(!allows("{\"seg\":[{\"id\":0,\"i\":[0,1001,\"ffffff\"]}]}"));
+  assert(!allows("{\"bri\":true}")); assert(!allows("{\"bri\":1.5}")); assert(!allows("{\"live\":true}"));
+  assert(!allows("{\"nl\":{\"on\":false,\"dur\":10}}"));
+  assert(!allows("{\"seg\":[{\"id\":0,\"col\":[[256,0,0]]}]}"));
+  if (argc>1) {
+    std::ifstream input(argv[1]); std::string vectors((std::istreambuf_iterator<char>(input)),{});
+    DynamicJsonDocument document(65536); assert(!deserializeJson(document,vectors));
+    size_t vectorCount=0;
+    for (JsonObject vector:document["vectors"].as<JsonArray>()) {
+      const char* hex=vector["frameHex"]; if (!hex) continue;
+      Frame framed;
+      for (size_t offset=0;offset<strlen(hex);offset+=2) {
+        const std::string octet(hex+offset,2); uint8_t byte=std::stoul(octet,nullptr,16); assert(framed.append(&byte,1,100));
+      }
+      assert(framed.complete()); ++vectorCount;
+      DynamicJsonDocument decoded(8192); assert(!deserializeJson(decoded,framed.bytes+4,framed.expected));
+      assert(decoded.as<JsonVariant>()==vector["message"]);
+    }
+    assert(vectorCount>=5);
+  }
+  std::cout << "frame and lighting host tests passed\n";
+}
