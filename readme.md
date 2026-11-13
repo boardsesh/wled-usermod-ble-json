@@ -16,10 +16,15 @@ Use WLED's standalone mechanism:
 ```ini
 [env:my_ble_controller]
 extends = env:esp32dev
+build_flags = ${env:esp32dev.build_flags} -fno-common
 custom_usermods =
   ${env:esp32dev.custom_usermods}
   https://github.com/boardsesh/wled-usermod-ble-json.git#<reviewed-commit>
 ```
+
+The compiler flag prevents tentative NimBLE globals from resolving against the
+pinned Tasmota core's older bundled privacy object. Full-feature generic builds
+may need the optional-integration trims in the supplied profiles to fit 4 MB OTA.
 
 Generic builds default to disabled: enable **BLE JSON / enabled** in WLED Usermod
 Settings. Boardsesh build profiles default enabled on first install only. A saved

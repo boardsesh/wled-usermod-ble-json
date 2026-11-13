@@ -65,7 +65,8 @@ When both bounds exist, start must precede stop.
 `i` is a flat sequence of `[index, hexColor]` or `[start, stop, hexColor]`
 groups. Indices must be within configured LED count. Range end is exclusive,
 strictly greater than start, and at most the LED count. Colors contain exactly
-six or eight hexadecimal digits. Unknown segment keys are rejected.
+six or eight hexadecimal digits. Unknown segment keys are rejected. Segment IDs must already exist in WLED;
+missing IDs fail with `invalid-segment` before any state is applied.
 
 One connected client and one outstanding request are allowed. BLE callbacks
 assemble bounded messages; WLED's main loop validates and applies complete
