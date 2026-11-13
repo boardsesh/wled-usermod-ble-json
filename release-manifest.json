@@ -1,4 +1,59 @@
 {
   "manifestVersion": 1,
-  "releases": []
+  "releases": [
+    {
+      "id": "0.1.0-beta.1-audio",
+      "channel": "beta",
+      "qualified": false,
+      "hardwareModel": "GL-C-015WL-D",
+      "architecture": "esp32",
+      "flashBytes": 4194304,
+      "sourceProfiles": [
+        {
+          "version": "16.0.1",
+          "brand": "WLED",
+          "product": "FOSS",
+          "appSlotBytes": 1572864
+        }
+      ],
+      "wledVersion": "16.0.1",
+      "usermodVersion": "0.1.0",
+      "protocolVersion": 1,
+      "buildId": "boardsesh-ble-json-0.1.0-audio",
+      "audio": true,
+      "imageBytes": 1339568,
+      "appSlotBytes": 1572864,
+      "url": "https://github.com/boardsesh/wled-usermod-ble-json/releases/download/0.1.0-beta.1/wled-16.0.1-boardsesh_ble_audio.bin",
+      "sha256": "6bd440ab244f2d6e3280b8bc4027daffd0f67f55af0a856ff48ee06f29830e72",
+      "firmwareSourceCommit": "a47f0e894d6d71302b25f3e97a8ba201811a3cf3",
+      "buildWorkflowRun": "https://github.com/boardsesh/wled-usermod-ble-json/actions/runs/43420749393"
+    },
+    {
+      "id": "0.1.0-beta.1-no-audio",
+      "channel": "beta",
+      "qualified": false,
+      "hardwareModel": "GL-C-015WL-D",
+      "architecture": "esp32",
+      "flashBytes": 4194304,
+      "sourceProfiles": [
+        {
+          "version": "16.0.1",
+          "brand": "WLED",
+          "product": "FOSS",
+          "appSlotBytes": 1572864
+        }
+      ],
+      "wledVersion": "16.0.1",
+      "usermodVersion": "0.1.0",
+      "protocolVersion": 1,
+      "buildId": "boardsesh-ble-json-0.1.0-no-audio",
+      "audio": false,
+      "imageBytes": 1300400,
+      "appSlotBytes": 1572864,
+      "url": "https://github.com/boardsesh/wled-usermod-ble-json/releases/download/0.1.0-beta.1/wled-16.0.1-boardsesh_ble_no_audio.bin",
+      "sha256": "ab6b0fe9b73ee165414b7b8cd14b529014846c747b511f42d86f1e334bc3a945",
+      "firmwareSourceCommit": "a47f0e894d6d71302b25f3e97a8ba201811a3cf3",
+      "buildWorkflowRun": "https://github.com/boardsesh/wled-usermod-ble-json/actions/runs/43420749393"
+    }
+  ]
 }
