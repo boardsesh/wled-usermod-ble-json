@@ -249,10 +249,8 @@ class BleJsonUsermod : public Usermod, public NimBLEServerCallbacks, public NimB
 #if !BLE_JSON_AUDIO
     ble_json::rememberDormantAudio(root,dormantAudio);
 #endif
-    JsonVariant setting=root["BLE JSON"]["enabled"];
-    if (setting.is<bool>()) { enabled=setting.as<bool>(); return true; }
-    // Missing key only: first install default differs between generic/gym images.
-    enabled=BLE_JSON_DEFAULT_ENABLED; return false;
+    // Constructor supplies first-install defaults. Partial updates preserve saved false.
+    return ble_json::readBleEnabled(root,enabled);
   }
 };
 static BleJsonUsermod bleJsonUsermod;

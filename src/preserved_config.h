@@ -1,5 +1,12 @@
 #pragma once
 namespace ble_json {
+template<typename Flag>
+bool readBleEnabled(JsonObjectConst root, Flag& enabled) {
+  const auto setting=root["BLE JSON"]["enabled"];
+  if (!setting.template is<bool>()) return false;
+  enabled=setting.template as<bool>();
+  return true;
+}
 // A partial usermod settings update omits unrelated objects; omission is not deletion.
 template<typename Text>
 void rememberDormantAudio(JsonObjectConst root, Text& stored) {

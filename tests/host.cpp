@@ -1,4 +1,5 @@
 #include <cassert>
+#include <atomic>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -12,6 +13,29 @@ bool allows(const char* json, uint32_t count = 1000) {
   DynamicJsonDocument document(32768);
   assert(!deserializeJson(document,json));
   return ble_json_validation::lighting(document.as<JsonObjectConst>(),count);
+}
+void preservedBleEnabled() {
+  for (bool firstInstallDefault : {false,true}) {
+    std::atomic<bool> enabled{firstInstallDefault};
+    DynamicJsonDocument config(1024);
+    assert(!deserializeJson(config,"{}"));
+    assert(!ble_json::readBleEnabled(config.as<JsonObjectConst>(),enabled));
+    assert(enabled.load()==firstInstallDefault);
+    assert(!deserializeJson(config,R"({"BLE JSON":{"enabled":false}})"));
+    assert(ble_json::readBleEnabled(config.as<JsonObjectConst>(),enabled));
+    assert(!enabled.load());
+    for (const char* partial : {R"({"AudioReactive":{"enabled":true}})",R"({"BLE JSON":{}})",R"({"BLE JSON":{"enabled":"true"}})"}) {
+      assert(!deserializeJson(config,partial));
+      assert(!ble_json::readBleEnabled(config.as<JsonObjectConst>(),enabled));
+      assert(!enabled.load());
+    }
+    assert(!deserializeJson(config,R"({"BLE JSON":{"enabled":true}})"));
+    assert(ble_json::readBleEnabled(config.as<JsonObjectConst>(),enabled));
+    assert(enabled.load());
+    assert(!deserializeJson(config,"{}"));
+    assert(!ble_json::readBleEnabled(config.as<JsonObjectConst>(),enabled));
+    assert(enabled.load());
+  }
 }
 void preservedAudioConfig() {
   DynamicJsonDocument original(4096), partial(1024), output(4096), reloaded(4096);
@@ -48,6 +72,7 @@ void preservedAudioConfig() {
   assert(!saved.containsKey("AudioReactive"));
 }
 int main(int argc,char** argv) {
+  preservedBleEnabled();
   preservedAudioConfig();
   const uint8_t json[] = {2,0,0,0,'{','}'};
   for (size_t size=1;size<=6;++size) {
