@@ -69,7 +69,7 @@ class BleJsonUsermod : public Usermod, public NimBLEServerCallbacks, public NimB
     root["name"] = serverDescription;
     root["wledVersion"] = versionString;
     root["ledCount"] = strip.getLengthTotal();
-    root["audio"] = bool(BLE_JSON_AUDIO);
+    root["audio"] = UsermodManager::lookup(USERMOD_ID_AUDIOREACTIVE)!=nullptr;
     root["maxMessageBytes"] = ble_json::MAX_MESSAGE;
   }
   void refreshCapabilities() {
@@ -242,12 +242,12 @@ class BleJsonUsermod : public Usermod, public NimBLEServerCallbacks, public NimB
   void addToConfig(JsonObject& root) override {
     root["BLE JSON"]["enabled"]=bool(enabled);
 #if !BLE_JSON_AUDIO
-    ble_json::restoreDormantAudio(root,dormantAudio);
+    if (!UsermodManager::lookup(USERMOD_ID_AUDIOREACTIVE)) ble_json::restoreDormantAudio(root,dormantAudio);
 #endif
   }
   bool readFromConfig(JsonObject& root) override {
 #if !BLE_JSON_AUDIO
-    ble_json::rememberDormantAudio(root,dormantAudio);
+    if (!UsermodManager::lookup(USERMOD_ID_AUDIOREACTIVE)) ble_json::rememberDormantAudio(root,dormantAudio);
 #endif
     // Constructor supplies first-install defaults. Partial updates preserve saved false.
     return ble_json::readBleEnabled(root,enabled);
