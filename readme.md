@@ -3,9 +3,20 @@
 WLED runtime lighting control over direct BLE GATT. Independent external usermod;
 no WLED core edits. Protocol: [protocol.md](protocol.md).
 
-**Development candidates only. No hardware/OTA combinations are qualified yet.**
-The install manifest deliberately contains no releases. Do not install development
-binaries on a gym controller. A successful compilation does not establish OTA safety.
+**Opt-in beta firmware. Hardware, factory OTA and real-phone qualification is not complete.**
+[Beta 0.1.0-beta.1](https://github.com/boardsesh/wled-usermod-ble-json/releases/tag/0.1.0-beta.1)
+can be installed by the wall owner through Boardsesh after explicitly accepting
+beta testing and confirming the controller model. The first beta accepts only a
+Gledopto GL-C-015WL-D with classic ESP32, 4 MB flash, and stock WLED 16.0.1
+(`/json/info` brand `WLED`, product `FOSS`). Other factory/custom builds remain
+unsupported until a matching source profile is added. A successful compilation
+does not establish OTA safety. Export the configuration/preset backup before
+installing; interrupted installation or changed settings may require recovery.
+
+The manifest identifies these releases as `channel: "beta", qualified: false`.
+Neither the beta label nor owner consent claims hardware qualification. Audio is
+preferred; the separately labeled no-audio fallback needs additional owner consent.
+Boardsesh clients that only accept qualified releases keep installation disabled.
 
 ## Use in another WLED build
 
@@ -65,7 +76,7 @@ connection because no request ID can safely be recovered. Well-framed invalid
 requests return explicit errors. Acknowledgement confirms WLED applied the
 request; it cannot confirm physical LED output.
 
-## Qualification before a release becomes installable
+## Qualification before a beta becomes stable
 
 First target: Gledopto GL-C-015WL-D, classic ESP32, 4 MB. Record exact source
 firmware identity, partition table and OTA slot size on real hardware. Test an
@@ -78,6 +89,9 @@ and stock-WLED return. Repeat for the separately named no-audio build if offered
 Run real Android/iOS 500/1000-pixel lighting, configured bounds, clear/replace,
 brightness/nightlight rearming, audio/climbing switching, two-phone handoff,
 background, sign-out and another board connection. Obtain independent Astra BLE
-review. Record evidence and artifact hash before adding qualified compatibility
-profiles to `release-manifest.json`. No CI-generated artifact is installable merely
-because it exists. The Boardsesh owner confirms and initiates every installation.
+review. Record evidence and artifact hash before marking any release qualified or
+stable. The beta manifest uses only the verified CI-built assets with matching
+size/SHA-256 reports; it does not change the image, partition table, or controller
+settings. Betas require explicit owner consent in addition to source-profile,
+architecture, flash-size, model, backup, checksum and OTA-lock checks. The owner
+confirms and initiates every installation; publishing a beta never flashes a device.
