@@ -26,9 +26,8 @@ def main():
     actual = subprocess.check_output(['git', '-C', str(checkout), 'rev-parse', 'HEAD'], text=True).strip()
     if actual != WLED_COMMIT:
         raise SystemExit('Refusing unpinned WLED source')
-    partition = checkout / 'tools/WLED_ESP32_4MB_1MB_FS.csv'
-    if subprocess.check_output(['git', '-C', str(checkout), 'diff', '--', str(partition)]):
-        raise SystemExit('Refusing modified partition table')
+    if subprocess.check_output(['git', '-C', str(checkout), 'diff', 'HEAD', '--']):
+        raise SystemExit('Refusing modified tracked WLED sources or partitions')
     configuration = (ROOT / 'build/platformio_override.ini').read_text().replace('symlink://../wled-usermod-ble-json', f'symlink://{ROOT}')
     (checkout / 'platformio_override.ini').write_text(configuration)
     run(arguments.pio, 'run', '-d', str(checkout), '-e', arguments.environment)
