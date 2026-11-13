@@ -52,7 +52,9 @@ and oversized images, and produces a candidate `.bin`, SHA-256 and size report.
 It never flashes hardware. Both profiles preserve LED drivers, the JSON API,
 web settings, Wi-Fi and OTA; unrelated integrations are trimmed before audio.
 The audio-disabled profile is separately identified and must never be silently
-substituted for the audio build. WLED source/build inputs are pinned; upstream
+substituted for the audio build. The no-audio module retains the dormant
+`AudioReactive` configuration through WLED saves, including microphone settings,
+so a later audio-enabled update can restore that configuration. WLED source/build inputs are pinned; upstream
 build timestamps and dependency resolution are not yet proven bit reproducible.
 
 BLE callbacks only buffer bounded frames and connection events. Validation and

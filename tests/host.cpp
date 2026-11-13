@@ -5,6 +5,7 @@
 #include "ArduinoJson-v6.h"
 #include "frame.h"
 #include "lighting.h"
+#include "preserved_config.h"
 using ble_json::Frame;
 
 bool allows(const char* json, uint32_t count = 1000) {
@@ -12,7 +13,42 @@ bool allows(const char* json, uint32_t count = 1000) {
   assert(!deserializeJson(document,json));
   return ble_json_validation::lighting(document.as<JsonObjectConst>(),count);
 }
+void preservedAudioConfig() {
+  DynamicJsonDocument original(4096), partial(1024), output(4096), reloaded(4096);
+  assert(!deserializeJson(original,R"({"BLE JSON":{"enabled":false},"AudioReactive":{"enabled":false,"digitalmic":{"type":1,"pin":[32,15,14]},"analogmic":{"pin":36},"config":{"squelch":10,"gain":30},"label":"saved microphone"}})"));
+  std::string stored;
+  ble_json::rememberDormantAudio(original.as<JsonObjectConst>(),stored);
+  assert(!stored.empty());
+  assert(!deserializeJson(partial,R"({"BLE JSON":{"enabled":false}})"));
+  ble_json::rememberDormantAudio(partial.as<JsonObjectConst>(),stored);
+  JsonObject saved=output.to<JsonObject>();
+  saved["BLE JSON"]["enabled"]=false;
+  ble_json::restoreDormantAudio(saved,stored);
+  std::string persisted;
+  serializeJson(output,persisted);
+  assert(!deserializeJson(reloaded,persisted));
+  assert(reloaded["BLE JSON"]["enabled"].is<bool>() && !reloaded["BLE JSON"]["enabled"].as<bool>());
+  assert(reloaded["AudioReactive"].is<JsonObject>());
+  assert(reloaded["AudioReactive"]==original["AudioReactive"]);
+  // A subsequent boot and save must retain the same complete dormant object.
+  std::string afterReboot;
+  ble_json::rememberDormantAudio(reloaded.as<JsonObjectConst>(),afterReboot);
+  assert(afterReboot==stored);
+  // An explicit replacement updates the dormant configuration rather than merging old pins.
+  assert(!deserializeJson(partial,R"({"AudioReactive":{"enabled":true,"digitalmic":{"type":2,"pin":[4,5,6]}}})"));
+  ble_json::rememberDormantAudio(partial.as<JsonObjectConst>(),stored);
+  output.clear(); saved=output.to<JsonObject>();
+  ble_json::restoreDormantAudio(saved,stored);
+  persisted.clear(); serializeJson(output,persisted);
+  assert(!deserializeJson(reloaded,persisted));
+  assert(reloaded["AudioReactive"]==partial["AudioReactive"]);
+  // Fresh no-audio installs must not invent microphone settings.
+  output.clear(); saved=output.to<JsonObject>();
+  ble_json::restoreDormantAudio(saved,std::string{});
+  assert(!saved.containsKey("AudioReactive"));
+}
 int main(int argc,char** argv) {
+  preservedAudioConfig();
   const uint8_t json[] = {2,0,0,0,'{','}'};
   for (size_t size=1;size<=6;++size) {
     Frame frame;

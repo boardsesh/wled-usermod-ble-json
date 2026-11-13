@@ -3,6 +3,7 @@
 #include <atomic>
 #include "frame.h"
 #include "lighting.h"
+#include "preserved_config.h"
 
 #ifndef BLE_JSON_DEFAULT_ENABLED
 #define BLE_JSON_DEFAULT_ENABLED 0
@@ -47,6 +48,10 @@ class BleJsonUsermod : public Usermod, public NimBLEServerCallbacks, public NimB
   uint32_t generation = 0;
   ble_json::Frame request;
   uint8_t outgoing[ble_json::MAX_MESSAGE + 4]{};
+#if !BLE_JSON_AUDIO
+  // Keep microphone configuration intact while its module is absent.
+  String dormantAudio;
+#endif
   char controllerId[18]{};
   uint32_t capabilityRefresh=0;
 
@@ -234,8 +239,16 @@ class BleJsonUsermod : public Usermod, public NimBLEServerCallbacks, public NimB
   void addToJsonInfo(JsonObject& root) override {
     JsonObject capability=root.createNestedObject("bleJson"); info(capability); capability["enabled"]=bool(enabled);
   }
-  void addToConfig(JsonObject& root) override { root["BLE JSON"]["enabled"]=bool(enabled); }
+  void addToConfig(JsonObject& root) override {
+    root["BLE JSON"]["enabled"]=bool(enabled);
+#if !BLE_JSON_AUDIO
+    ble_json::restoreDormantAudio(root,dormantAudio);
+#endif
+  }
   bool readFromConfig(JsonObject& root) override {
+#if !BLE_JSON_AUDIO
+    ble_json::rememberDormantAudio(root,dormantAudio);
+#endif
     JsonVariant setting=root["BLE JSON"]["enabled"];
     if (setting.is<bool>()) { enabled=setting.as<bool>(); return true; }
     // Missing key only: first install default differs between generic/gym images.
