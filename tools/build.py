@@ -28,7 +28,7 @@ def main():
         raise SystemExit('Refusing unpinned WLED source')
     if subprocess.check_output(['git', '-C', str(checkout), 'diff', 'HEAD', '--']):
         raise SystemExit('Refusing modified tracked WLED sources or partitions')
-    configuration = (ROOT / 'build/platformio_override.ini').read_text().replace('symlink://../wled-usermod-ble-json', f'symlink://{ROOT}')
+    configuration = (ROOT / 'build/platformio_override.ini').read_text().replace('symlink://../wled-usermod-ble-json', f'symlink://{ROOT}').replace('@WLED_ROOT@', str(checkout))
     (checkout / 'platformio_override.ini').write_text(configuration)
     run(arguments.pio, 'run', '-d', str(checkout), '-e', arguments.environment)
     firmware = checkout / '.pio/build' / arguments.environment / 'firmware.bin'
