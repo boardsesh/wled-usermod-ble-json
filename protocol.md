@@ -17,6 +17,24 @@ by 12 lowercase hexadecimal digits from the device MAC), `protocolVersion: 1`,
 Read capabilities after connecting and compare the stable controller identity
 before sending requests. Platform BLE peripheral IDs belong only in local caches.
 
+## Advertising
+
+The advertisement carries the service UUID. The scan response carries the
+complete local name `<name>#<SERIAL>`, also used as the GAP device name:
+
+- `<name>` is WLED's device name (Config → User Interface → Server description,
+  `id.name` in `cfg.json`), kept to whole UTF-8 characters within 22 bytes. `#`,
+  `@` and control characters are removed, as are leading and trailing spaces. An
+  empty name becomes `WLED`.
+- `<SERIAL>` is the last six hexadecimal digits of `controllerId`, uppercase
+  (`wled-1cc3abc0559c` → `C0559C`). It is not the Bluetooth address, which differs
+  from the station MAC on ESP32.
+
+Example: `Norte izquierda#C0559C`. The whole name is at most 29 bytes and fits the
+scan response next to its AD header. A renamed controller advertises its new name
+within about a second, without a restart. Scanners can pick a controller by its
+serial before connecting; the capabilities read remains the identity check.
+
 Requests and responses use a four-byte unsigned little-endian UTF-8 byte length,
 then precisely that many UTF-8 bytes. Length excludes the four-byte prefix, must
 be positive, and cannot exceed 8192. Fragment the complete frame into ATT payloads
