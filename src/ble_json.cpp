@@ -4,6 +4,7 @@
 #include "frame.h"
 #include "lighting.h"
 #include "preserved_config.h"
+#include "advertised_name.h"
 
 #ifndef BLE_JSON_DEFAULT_ENABLED
 #define BLE_JSON_DEFAULT_ENABLED 0
@@ -54,6 +55,7 @@ class BleJsonUsermod : public Usermod, public NimBLEServerCallbacks, public NimB
 #endif
   char controllerId[18]{};
   uint32_t capabilityRefresh=0;
+  std::string advertised;
 
   void lock() { xSemaphoreTake(mutex, portMAX_DELAY); }
   void unlock() { xSemaphoreGive(mutex); }
@@ -77,9 +79,25 @@ class BleJsonUsermod : public Usermod, public NimBLEServerCallbacks, public NimB
     JsonObject root = document.to<JsonObject>(); info(root);
     String json; serializeJson(document,json); capabilities->setValue(reinterpret_cast<const uint8_t*>(json.c_str()),json.length());
   }
+  // Classic ESP32 with Bluetooth running aborts in esp_wifi_set_ps(WIFI_PS_NONE), which WLED
+  // applies when "Disable WiFi sleep" is set and a network is configured (Gledopto ships it set).
+  static void keepModemSleep() {
+    noWifiSleep = false;
+    WiFi.setSleep(true);
+  }
+  // Name in the scan response: the 128-bit service UUID leaves no room in the advertisement itself.
+  void advertiseName(const std::string& name) {
+    NimBLEAdvertisementData response;
+    response.setName(name);
+    NimBLEDevice::getAdvertising()->setScanResponseData(response);
+    NimBLEDevice::setDeviceName(name);
+    advertised = name;
+  }
   void start() {
     if (started || !enabled || updating) return;
-    NimBLEDevice::init("WLED BLE JSON");
+    keepModemSleep();
+    const std::string name = ble_json::advertisedName(serverDescription, controllerId);
+    NimBLEDevice::init(name);
     NimBLEDevice::setSecurityAuth(false,false,false);
     NimBLEDevice::setMTU(247);
     server = NimBLEDevice::createServer();
@@ -93,6 +111,8 @@ class BleJsonUsermod : public Usermod, public NimBLEServerCallbacks, public NimB
     refreshCapabilities(); service->start();
     auto* advertising = NimBLEDevice::getAdvertising();
     advertising->addServiceUUID(SERVICE);
+    advertising->enableScanResponse(true);
+    advertiseName(name);
     advertising->start(); started=true;
   }
   void stop() {
@@ -202,8 +222,16 @@ class BleJsonUsermod : public Usermod, public NimBLEServerCallbacks, public NimB
     if (!mutex || !lifecycle) return;
     LifecycleGuard lifecycleGuard(lifecycle);
     if (!enabled || updating) { stop(); return; }
+    // WiFi settings can turn sleep off at runtime; WLED reconnects before usermods run, so
+    // this narrows the window but cannot close it from a usermod.
+    if (noWifiSleep) keepModemSleep();
     start();
-    if (uint32_t(millis()-capabilityRefresh)>=1000) { refreshCapabilities(); capabilityRefresh=millis(); }
+    if (uint32_t(millis()-capabilityRefresh)>=1000) {
+      refreshCapabilities(); capabilityRefresh=millis();
+      // The owner renames the controller through WLED's own name; advertise it without a restart.
+      const std::string name = ble_json::advertisedName(serverDescription, controllerId);
+      if (name != advertised) advertiseName(name);
+    }
     lock();
     if (peer==NO_PEER) { unlock(); if (!NimBLEDevice::getAdvertising()->isAdvertising()) NimBLEDevice::getAdvertising()->start(); return; }
     const uint32_t now=millis();
@@ -250,7 +278,10 @@ class BleJsonUsermod : public Usermod, public NimBLEServerCallbacks, public NimB
     if (!UsermodManager::lookup(USERMOD_ID_AUDIOREACTIVE)) ble_json::rememberDormantAudio(root,dormantAudio);
 #endif
     // Constructor supplies first-install defaults. Partial updates preserve saved false.
-    return ble_json::readBleEnabled(root,enabled);
+    const bool complete = ble_json::readBleEnabled(root,enabled);
+    // WLED reads its own settings first, so this overrides "Disable WiFi sleep" before WiFi starts.
+    if (enabled) keepModemSleep();
+    return complete;
   }
 };
 static BleJsonUsermod bleJsonUsermod;

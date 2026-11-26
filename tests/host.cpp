@@ -7,7 +7,28 @@
 #include "frame.h"
 #include "lighting.h"
 #include "preserved_config.h"
+#include "advertised_name.h"
 using ble_json::Frame;
+
+void advertisedNames() {
+  using ble_json::advertisedName;
+  const char* id = "wled-1cc3abc0559c";
+  assert(advertisedName("WLED-Gledopto",id)=="WLED-Gledopto#C0559C");
+  assert(advertisedName("Norte izquierda",id)=="Norte izquierda#C0559C");
+  // "#" and "@" would end the name early in the picker's serial parser.
+  assert(advertisedName("Wall #2 @gym",id)=="Wall 2 gym#C0559C");
+  // 22 bytes, whole UTF-8 characters only: "Rocódromo Escalada Nor" is 23 bytes.
+  assert(advertisedName("Rocódromo Escalada Norte",id)=="Rocódromo Escalada No#C0559C");
+  assert(advertisedName("12345678901234567890ñ",id)=="12345678901234567890ñ#C0559C");
+  assert(advertisedName("123456789012345678901ñ",id)=="123456789012345678901#C0559C");
+  assert(advertisedName("  ",id)=="WLED#C0559C"); assert(advertisedName(nullptr,id)=="WLED#C0559C");
+  assert(advertisedName("\x01\xff\xc3",id)=="WLED#C0559C");
+  for (const char* name : {"WLED-Gledopto","Rocódromo Escalada Norte","12345678901234567890ñ"}) {
+    const std::string full = advertisedName(name,id);
+    assert(full.size()<=ble_json::NAME_BYTES+1+ble_json::SERIAL_CHARS);
+    assert(full.find('@')==std::string::npos && full.find('#')==full.size()-1-ble_json::SERIAL_CHARS);
+  }
+}
 
 bool allows(const char* json, uint32_t count = 1000) {
   DynamicJsonDocument document(32768);
@@ -74,6 +95,7 @@ void preservedAudioConfig() {
 int main(int argc,char** argv) {
   preservedBleEnabled();
   preservedAudioConfig();
+  advertisedNames();
   const uint8_t json[] = {2,0,0,0,'{','}'};
   for (size_t size=1;size<=6;++size) {
     Frame frame;

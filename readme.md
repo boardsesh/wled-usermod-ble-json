@@ -27,20 +27,39 @@ Use WLED's standalone mechanism:
 ```ini
 [env:my_ble_controller]
 extends = env:esp32dev
-build_flags = ${env:esp32dev.build_flags} -fno-common
+build_flags = ${env:esp32dev.build_flags} -fno-common -D WLED_USE_SHARED_RMT
 custom_usermods =
   ${env:esp32dev.custom_usermods}
   https://github.com/boardsesh/wled-usermod-ble-json.git#<reviewed-commit>
 ```
 
-The compiler flag prevents tentative NimBLE globals from resolving against the
+`-fno-common` prevents tentative NimBLE globals from resolving against the
 pinned Tasmota core's older bundled privacy object. Full-feature generic builds
 may need the optional-integration trims in the supplied profiles to fit 4 MB OTA.
+
+**`-D WLED_USE_SHARED_RMT` is required on classic ESP32.** Without it WLED drives
+LEDs with `NeoEsp32RmtHI`, which, when the core has `CONFIG_BTDM_CTRL_HLI`, joins
+the Bluetooth controller's level-4 interrupt from WLED's core 1 while the
+controller uses it on core 0. IDF 4.4 keeps one level-4 save area for both cores,
+so overlapping interrupts corrupt each other: the controller boot-loops with a
+core 0 `IllegalInstruction` and a core 1 `Double exception` once LEDs and Wi-Fi
+start. The shared RMT driver uses an ordinary interrupt. Check a real strip for
+flicker under Wi-Fi load.
+
+While enabled, the module keeps Wi-Fi modem sleep on: classic ESP32 aborts in
+`esp_wifi_set_ps(WIFI_PS_NONE)` when Bluetooth runs, and WLED applies that setting
+from "Disable WiFi sleep" when a network is configured (Gledopto factory settings
+have it ticked). WLED saves the corrected setting with its next configuration
+write. Ticking the option again in Wi-Fi settings while Bluetooth runs can still
+abort before the module corrects it, because WLED reconnects before usermods run;
+closing that needs WLED to skip `WiFi.setSleep(false)` while Bluetooth is up.
 
 Generic builds default to disabled: enable **BLE JSON / enabled** in WLED Usermod
 Settings. Boardsesh build profiles default enabled on first install only. A saved
 false setting is respected on subsequent updates. No GPIO, LED, relay, microphone,
-network, preset, or power-limit configuration is hardcoded or persisted by this mod.
+network, preset, or power-limit configuration is hardcoded or persisted by this mod,
+except Wi-Fi modem sleep (above). The controller advertises WLED's device name and
+serial (`Norte izquierda#C0559C`); see [protocol.md](protocol.md#advertising).
 No pairing or bonding is required. Any nearby client can control runtime lighting
 while enabled. The service deliberately cannot configure Wi-Fi, reboot, save
 presets or install firmware.
